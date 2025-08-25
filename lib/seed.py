@@ -1,5 +1,7 @@
 # lib/seed.py
-from sqlalchemy.exc import IntegrityError
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from lib.models import Session, Learner, Word, Lesson, PracticeSession
 from datetime import datetime
 
