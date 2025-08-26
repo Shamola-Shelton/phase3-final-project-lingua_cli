@@ -1,31 +1,28 @@
-# app.py (temporary for testing)
-from lib.models import Session, Learner
+# app.py
+from lib.models import Session, Learner, BeginnerLearner
 
 if __name__ == "__main__":
     session = Session()
     
-    # Create: Already done in seed
-    
-    # Read: Query all learners
+    # Read learners
     learners = session.query(Learner).all()
     for learner in learners:
         print(learner)
     
-    # Update: Change a learner's level
-    learner = session.query(Learner).filter_by(name="Alice").first()
-    if learner:
-        learner.proficiency_level = "Intermediate"
-        session.commit()
-        print(f"Updated: {learner}")
+    # Use OOP: Add session and update level
+    alice = session.query(Learner).filter_by(name="Alice").first()
+    if alice:
+        alice.add_session(session, score=95, lesson_id=1, feedback="Excellent!")
+        print(f"Updated level: {alice.proficiency_level}")
+        print(f"Fluency score: {alice.fluency_score:.2f}")
     
-    # Delete: Remove a learner (careful, cascades to sessions)
-    # learner_to_delete = session.query(Learner).filter_by(name="Bob").first()
-    # if learner_to_delete:
-    #     session.delete(learner_to_delete)
-    #     session.commit()
-    #     print("Deleted Bob.")
+    # Class method
+    print(Learner.get_progress(session, 1))
     
-    # Test class method
-    print(Learner.get_progress(session, 1))  # Assuming Alice's ID is 1
+    # Inheritance example
+    beginner = BeginnerLearner(name="Charlie", target_language="Spanish")
+    session.add(beginner)
+    session.commit()
+    print(beginner.generate_quiz_prompt())
     
     session.close()
