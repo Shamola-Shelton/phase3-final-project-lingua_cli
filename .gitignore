@@ -1,0 +1,30 @@
+# Virtual environment
+venv/
+
+# Database
+lingua.db
+
+# Environment variables
+.env
+.env.example  # If you don't want to commit the template
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Pytest cache
+.pytest_cache/
+
+# Alembic versions (if not committing migrations)
+lib/db/migrations/versions/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# OS-specific
+.DS_Store
+Thumbs.db

@@ -30,21 +30,18 @@ class Learner(Base):
     
     sessions = relationship('PracticeSession', back_populates='learner')
     
-    # Class attribute: Track total learners (example of class-level state)
     total_learners = 0
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        Learner.total_learners += 1  # Increment class attribute on creation
+        Learner.total_learners += 1
     
-    # Instance method: Add a session and update level if needed
     def add_session(self, session, score, lesson_id=None, feedback=""):
         new_session = PracticeSession(learner_id=self.id, lesson_id=lesson_id, score=score, feedback=feedback)
         session.add(new_session)
         session.commit()
-        self.update_level(session)  # Call to check if level should change
+        self.update_level(session)
     
-    # Instance method: Update proficiency level based on average score
     def update_level(self, session):
         avg_score = self.get_average_score(session)
         if avg_score > 90:
@@ -55,23 +52,19 @@ class Learner(Base):
             self.proficiency_level = 'Beginner'
         session.commit()
     
-    # Helper method for average score (local scope)
     def get_average_score(self, session):
         total_sessions = len(self.sessions)
         if total_sessions == 0:
             return 0
         return sum(s.score for s in self.sessions) / total_sessions
     
-    # Property: Computed fluency score
     @property
     def fluency_score(self):
-        # Example calculation: average score * (number of sessions / 10)
         if not self.sessions:
             return 0
         avg_score = sum(s.score for s in self.sessions) / len(self.sessions)
         return avg_score * (len(self.sessions) / 10)
     
-    # Class method for progress (updated to use instance)
     @classmethod
     def get_progress(cls, session, learner_id):
         learner = session.query(cls).get(learner_id)
@@ -81,16 +74,17 @@ class Learner(Base):
         avg_score = learner.get_average_score(session)
         return f"Progress for {learner.name}: {total_sessions} sessions, average score: {avg_score:.2f}, fluency score: {learner.fluency_score:.2f}"
     
+    def generate_quiz_prompt(self):
+        return f"Create a quiz for {self.proficiency_level.lower()} {self.target_language} learner on vocabulary and grammar."  # Default for base class
+    
     def __repr__(self):
         return f"<Learner(name={self.name}, language={self.target_language}, level={self.proficiency_level})>"
 
 class BeginnerLearner(Learner):
-    # Simplified mode for beginners
     def generate_quiz_prompt(self):
         return f"Create a simple quiz for beginner {self.target_language} learner on basic vocabulary."
 
 class AdvancedLearner(Learner):
-    # Complex mode for advanced
     def generate_quiz_prompt(self):
         return f"Create an advanced quiz for {self.proficiency_level} {self.target_language} learner on conversation and grammar."
 
