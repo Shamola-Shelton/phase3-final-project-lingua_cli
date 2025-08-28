@@ -9,7 +9,7 @@ class DoublyLinkedList:
     def __init__(self):
         self.head = None
         self.tail = None
-    
+
     def add(self, data):
         node = Node(data)
         if not self.head:
@@ -18,7 +18,7 @@ class DoublyLinkedList:
             node.prev = self.tail
             self.tail.next = node
             self.tail = node
-    
+
     def move_to_end(self, node):
         if node == self.tail:
             return
@@ -32,7 +32,7 @@ class DoublyLinkedList:
         node.next = None
         self.tail.next = node
         self.tail = node
-    
+
     def search(self, key):
         current = self.head
         while current:
@@ -40,9 +40,9 @@ class DoublyLinkedList:
                 return current
             current = current.next
         return None
-    
+
     def sort(self):
-        # Simple bubble sort for demonstration
+        # Simple bubble sort for demonstration (assumes comparable data like strings)
         current = self.head
         while current:
             next_node = current.next
@@ -61,7 +61,7 @@ class TreeNode:
 class GrammarTree:
     def __init__(self):
         self.root = None
-    
+
     def insert(self, data):
         if not self.root:
             self.root = TreeNode(data)
@@ -80,9 +80,12 @@ class GrammarTree:
                 else:
                     current.right = TreeNode(data)
                     break
-    
-    def traverse_in_order(self, node):
+
+    def traverse_in_order(self, node, result=None):
+        if result is None:
+            result = []
         if node:
-            self.traverse_in_order(node.left)
-            print(node.data)
-            self.traverse_in_order(node.right)
+            self.traverse_in_order(node.left, result)
+            result.append(node.data)
+            self.traverse_in_order(node.right, result)
+        return result

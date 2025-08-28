@@ -1,12 +1,12 @@
+# lib/models.py
 import os
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, Table
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, Table, event
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 from sqlalchemy.exc import IntegrityError
-from lib.structures import DoublyLinkedList, GrammarTree
-load_dotenv()
 
+load_dotenv()
 Base = declarative_base()
 engine = create_engine(os.getenv('DATABASE_URL', 'sqlite:///lingua.db'))
 Session = sessionmaker(bind=engine)
@@ -21,27 +21,30 @@ lesson_words = Table(
 
 class Learner(Base):
     __tablename__ = 'learners'
-    
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
+    name = Column(String, nullable=False, unique=True)  # Username
+    password = Column(String, nullable=False)  # Plain text for simplicity; hash in production
     target_language = Column(String, nullable=False)
-    proficiency_level = Column(String, default='Beginner')
+    proficiency_level = Column(String, default='Beginner')  # e.g., Beginner, Intermediate, Advanced
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    
+    # Relationships
     sessions = relationship('PracticeSession', back_populates='learner')
-    
+    # Class attribute
     total_learners = 0
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         Learner.total_learners += 1
-    
+        from lib.structures import DoublyLinkedList, GrammarTree
+        self.repetition_list = DoublyLinkedList()  # For spaced repetition
+        self.grammar_tree = GrammarTree()  # For grammar rules
+
     def add_session(self, session, score, lesson_id=None, feedback=""):
         new_session = PracticeSession(learner_id=self.id, lesson_id=lesson_id, score=score, feedback=feedback)
         session.add(new_session)
         session.commit()
         self.update_level(session)
-    
+
     def update_level(self, session):
         avg_score = self.get_average_score(session)
         if avg_score > 90:
@@ -51,20 +54,20 @@ class Learner(Base):
         else:
             self.proficiency_level = 'Beginner'
         session.commit()
-    
+
     def get_average_score(self, session):
         total_sessions = len(self.sessions)
         if total_sessions == 0:
             return 0
         return sum(s.score for s in self.sessions) / total_sessions
-    
+
     @property
     def fluency_score(self):
         if not self.sessions:
             return 0
         avg_score = sum(s.score for s in self.sessions) / len(self.sessions)
         return avg_score * (len(self.sessions) / 10)
-    
+
     @classmethod
     def get_progress(cls, session, learner_id):
         learner = session.query(cls).get(learner_id)
@@ -73,81 +76,84 @@ class Learner(Base):
         total_sessions = len(learner.sessions)
         avg_score = learner.get_average_score(session)
         return f"Progress for {learner.name}: {total_sessions} sessions, average score: {avg_score:.2f}, fluency score: {learner.fluency_score:.2f}"
-    
-    def generate_quiz_prompt(self):
-        return f"Create a quiz for {self.proficiency_level.lower()} {self.target_language} learner on vocabulary and grammar."  # Default for base class
-    
+
     def __repr__(self):
         return f"<Learner(name={self.name}, language={self.target_language}, level={self.proficiency_level})>"
 
-class BeginnerLearner(Learner):
-    def generate_quiz_prompt(self):
-        return f"Create a simple quiz for beginner {self.target_language} learner on basic vocabulary."
+    def add_weak_word(self, word):
+        self.repetition_list.add(word)
 
-class AdvancedLearner(Learner):
+    def review_weak_words(self):
+        self.repetition_list.sort()
+        return self.repetition_list
+
+    def load_weak_words(self, session):
+        # Example: Words from low-score sessions
+        low_sessions = [s for s in self.sessions if s.score < 70]
+        for s in low_sessions:
+            if s.lesson:
+                for word in s.lesson.words:
+                    self.add_weak_word(word.term)
+
+    def add_grammar_rule(self, rule):
+        self.grammar_tree.insert(rule)
+
+    def practice_grammar(self):
+        return self.grammar_tree.traverse_in_order(self.grammar_tree.root)
+
     def generate_quiz_prompt(self):
-        return f"Create an advanced quiz for {self.proficiency_level} {self.target_language} learner on conversation and grammar."
+        if self.proficiency_level == 'Beginner':
+            return f"Create a simple quiz for beginner {self.target_language} learner on basic vocabulary."
+        elif self.proficiency_level == 'Intermediate':
+            return f"Create an intermediate quiz for {self.proficiency_level} {self.target_language} learner on grammar and vocabulary."
+        else:  # Advanced
+            return f"Create an advanced quiz for {self.proficiency_level} {self.target_language} learner on conversation and grammar."
 
 class Word(Base):
     __tablename__ = 'words'
-    
     id = Column(Integer, primary_key=True)
-    term = Column(String, nullable=False, unique=True)
-    translation = Column(String, nullable=False)
-    part_of_speech = Column(String)
+    term = Column(String, nullable=False, unique=True)  # e.g., "hola"
+    translation = Column(String, nullable=False)  # e.g., "hello"
+    part_of_speech = Column(String)  # e.g., "noun"
     example_sentence = Column(String)
-    
+    # Relationships
     lessons = relationship('Lesson', secondary=lesson_words, back_populates='words')
-    
+
     def __repr__(self):
         return f"<Word(term={self.term}, translation={self.translation})>"
 
 class Lesson(Base):
     __tablename__ = 'lessons'
-    
     id = Column(Integer, primary_key=True)
-    title = Column(String, nullable=False)
+    title = Column(String, nullable=False)  # e.g., "Basic Greetings"
     description = Column(String)
-    difficulty = Column(Integer, default=1)
-    
+    difficulty = Column(Integer, default=1)  # 1-5 scale
+    # Relationships
     words = relationship('Word', secondary=lesson_words, back_populates='lessons')
     sessions = relationship('PracticeSession', back_populates='lesson')
-    
+
     def __repr__(self):
         return f"<Lesson(title={self.title}, difficulty={self.difficulty})>"
 
 class PracticeSession(Base):
     __tablename__ = 'practice_sessions'
-    
     id = Column(Integer, primary_key=True)
     learner_id = Column(Integer, ForeignKey('learners.id'), nullable=False)
     lesson_id = Column(Integer, ForeignKey('lessons.id'))
     session_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    score = Column(Integer, default=0)
-    feedback = Column(String)
-    
+    score = Column(Integer, default=0)  # e.g., out of 100
+    feedback = Column(String)  # AI-generated later
+    # Relationships
     learner = relationship('Learner', back_populates='sessions')
     lesson = relationship('Lesson', back_populates='sessions')
-    
+
     def __repr__(self):
         return f"<PracticeSession(learner_id={self.learner_id}, date={self.session_date}, score={self.score})>"
-class Learner(Base):
-    # ... (keep existing)
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.repetition_list = DoublyLinkedList()  # For spaced repetition
-        self.grammar_tree = GrammarTree()  # For grammar rules
-    
-    def add_weak_word(self, word):
-        self.repetition_list.add(word)
-    
-    def review_weak_words(self):
-        self.repetition_list.sort()
-        return self.repetition_list
-    
-    def add_grammar_rule(self, rule):
-        self.grammar_tree.insert(rule)
-    
-    def practice_grammar(self):
-        self.grammar_tree.traverse_in_order(self.grammar_tree.root)
+
+@event.listens_for(Learner, 'load')
+def receive_load(target, context):
+    from lib.structures import DoublyLinkedList, GrammarTree
+    if not hasattr(target, 'repetition_list'):
+        target.repetition_list = DoublyLinkedList()
+    if not hasattr(target, 'grammar_tree'):
+        target.grammar_tree = GrammarTree()

@@ -1,5 +1,5 @@
 # app.py
-from lib.cli import cli
+from lib.cli import initial_menu
 
 if __name__ == "__main__":
-    cli()
+    initial_menu()
