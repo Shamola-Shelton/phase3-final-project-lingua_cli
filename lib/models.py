@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, Table
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 from sqlalchemy.exc import IntegrityError
-
+from lib.structures import DoublyLinkedList, GrammarTree
 load_dotenv()
 
 Base = declarative_base()
@@ -131,3 +131,23 @@ class PracticeSession(Base):
     
     def __repr__(self):
         return f"<PracticeSession(learner_id={self.learner_id}, date={self.session_date}, score={self.score})>"
+class Learner(Base):
+    # ... (keep existing)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.repetition_list = DoublyLinkedList()  # For spaced repetition
+        self.grammar_tree = GrammarTree()  # For grammar rules
+    
+    def add_weak_word(self, word):
+        self.repetition_list.add(word)
+    
+    def review_weak_words(self):
+        self.repetition_list.sort()
+        return self.repetition_list
+    
+    def add_grammar_rule(self, rule):
+        self.grammar_tree.insert(rule)
+    
+    def practice_grammar(self):
+        self.grammar_tree.traverse_in_order(self.grammar_tree.root)
