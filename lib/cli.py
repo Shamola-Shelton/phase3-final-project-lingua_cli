@@ -44,6 +44,20 @@ def view_progress(learner_id):
     session = Session()
     progress = Learner.get_progress(session, learner_id)
     click.echo(progress)
+# ... (keep existing imports and commands)
+
+@cli.command(name='review-words')
+@click.option('--learner_id', prompt='Learner ID', type=int, help='ID for review.')
+def review_words(learner_id):
+    session = Session()
+    learner = session.query(Learner).get(learner_id)
+    if learner:
+        # Example usage
+        learner.add_weak_word("hola")  # Simulate weak word
+        review_list = learner.review_weak_words()
+        click.echo(f"Review list: {review_list.head.data if review_list.head else 'No words'}")
+    else:
+        click.echo("Learner not found.")
 
 @cli.command(name='quiz-vocab')
 @click.option('--learner_id', prompt='Learner ID', type=int, help='ID for personalized quiz.')
