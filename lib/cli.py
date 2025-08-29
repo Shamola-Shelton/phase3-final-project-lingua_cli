@@ -3,11 +3,10 @@ import click
 import getpass
 import csv
 import sys
-from sqlalchemy.exc import IntegrityError  # Added import
 from lib.models import Session, Learner, Word
-from lib.helpers import generate_quiz, correct_grammar, simulate_convo, InvalidInputError
+from lib.helpers import generate_quiz, correct_grammar, simulate_convo, InvalidInputError, get_proficiency_levels
 
-current_user_id = None  # Global for current logged-in user
+current_user_id = None  # Store ID instead of object to avoid detachment
 
 @click.group()
 def cli():
@@ -37,10 +36,9 @@ def log_in():
     session = Session()
     learner = session.query(Learner).filter_by(name=name, password=password).first()
     if learner:
-        current_user_id = learner.id  # Ensure ID is set
+        current_user_id = learner.id
         click.echo(f"Logged in as {name}. Level: {learner.proficiency_level}")
     else:
-        current_user_id = None  # Explicitly reset if login fails
         click.echo("Invalid username or password.")
     session.close()
 
@@ -108,6 +106,11 @@ def view_progress():
         return
     progress = Learner.get_progress(session, learner.id)
     click.echo(progress)
+    # Display proficiency criteria using tuples
+    levels = get_proficiency_levels()
+    click.echo("\nProficiency Level Criteria:")
+    for level, min_score in levels:
+        click.echo(f"{level}: Average score >= {min_score}")
     session.close()
     click.echo("\nq: Quit app\nr: Return to main menu")
     choice = click.prompt("Enter choice")
@@ -277,6 +280,3 @@ def main_menu():
             break  # Return to initial menu
         else:
             click.echo("Invalid choice.")
-
-if __name__ == '__main__':
-    initial_menu()
