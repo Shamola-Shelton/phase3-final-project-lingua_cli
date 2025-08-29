@@ -28,3 +28,6 @@ lib/db/migrations/versions/
 # OS-specific
 .DS_Store
 Thumbs.db
+
+# commands
+commands.sh
