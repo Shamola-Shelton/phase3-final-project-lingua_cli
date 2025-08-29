@@ -3,10 +3,11 @@ import click
 import getpass
 import csv
 import sys
+from sqlalchemy.exc import IntegrityError  # Added import
 from lib.models import Session, Learner, Word
 from lib.helpers import generate_quiz, correct_grammar, simulate_convo, InvalidInputError
 
-current_user_id = None  # Store ID instead of object to avoid detachment
+current_user_id = None  # Global for current logged-in user
 
 @click.group()
 def cli():
@@ -36,9 +37,10 @@ def log_in():
     session = Session()
     learner = session.query(Learner).filter_by(name=name, password=password).first()
     if learner:
-        current_user_id = learner.id
+        current_user_id = learner.id  # Ensure ID is set
         click.echo(f"Logged in as {name}. Level: {learner.proficiency_level}")
     else:
+        current_user_id = None  # Explicitly reset if login fails
         click.echo("Invalid username or password.")
     session.close()
 

@@ -22,22 +22,20 @@ lesson_words = Table(
 class Learner(Base):
     __tablename__ = 'learners'
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False, unique=True)  # Username
-    password = Column(String, nullable=False)  # Plain text for simplicity; hash in production
+    name = Column(String, nullable=False, unique=True)
+    password = Column(String, nullable=False)
     target_language = Column(String, nullable=False)
-    proficiency_level = Column(String, default='Beginner')  # e.g., Beginner, Intermediate, Advanced
+    proficiency_level = Column(String, default='Beginner')
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    # Relationships
     sessions = relationship('PracticeSession', back_populates='learner')
-    # Class attribute
     total_learners = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         Learner.total_learners += 1
         from lib.structures import DoublyLinkedList, GrammarTree
-        self.repetition_list = DoublyLinkedList()  # For spaced repetition
-        self.grammar_tree = GrammarTree()  # For grammar rules
+        self.repetition_list = DoublyLinkedList()
+        self.grammar_tree = GrammarTree()
 
     def add_session(self, session, score, lesson_id=None, feedback=""):
         new_session = PracticeSession(learner_id=self.id, lesson_id=lesson_id, score=score, feedback=feedback)
@@ -70,7 +68,7 @@ class Learner(Base):
 
     @classmethod
     def get_progress(cls, session, learner_id):
-        learner = session.query(cls).get(learner_id)
+        learner = session.get(cls, learner_id)  # Updated to use session.get
         if not learner:
             return "Learner not found."
         total_sessions = len(learner.sessions)
@@ -88,7 +86,6 @@ class Learner(Base):
         return self.repetition_list
 
     def load_weak_words(self, session):
-        # Example: Words from low-score sessions
         low_sessions = [s for s in self.sessions if s.score < 70]
         for s in low_sessions:
             if s.lesson:
@@ -106,17 +103,16 @@ class Learner(Base):
             return f"Create a simple quiz for beginner {self.target_language} learner on basic vocabulary."
         elif self.proficiency_level == 'Intermediate':
             return f"Create an intermediate quiz for {self.proficiency_level} {self.target_language} learner on grammar and vocabulary."
-        else:  # Advanced
+        else:
             return f"Create an advanced quiz for {self.proficiency_level} {self.target_language} learner on conversation and grammar."
 
 class Word(Base):
     __tablename__ = 'words'
     id = Column(Integer, primary_key=True)
-    term = Column(String, nullable=False, unique=True)  # e.g., "hola"
-    translation = Column(String, nullable=False)  # e.g., "hello"
-    part_of_speech = Column(String)  # e.g., "noun"
+    term = Column(String, nullable=False, unique=True)
+    translation = Column(String, nullable=False)
+    part_of_speech = Column(String)
     example_sentence = Column(String)
-    # Relationships
     lessons = relationship('Lesson', secondary=lesson_words, back_populates='words')
 
     def __repr__(self):
@@ -125,10 +121,9 @@ class Word(Base):
 class Lesson(Base):
     __tablename__ = 'lessons'
     id = Column(Integer, primary_key=True)
-    title = Column(String, nullable=False)  # e.g., "Basic Greetings"
+    title = Column(String, nullable=False)
     description = Column(String)
-    difficulty = Column(Integer, default=1)  # 1-5 scale
-    # Relationships
+    difficulty = Column(Integer, default=1)
     words = relationship('Word', secondary=lesson_words, back_populates='lessons')
     sessions = relationship('PracticeSession', back_populates='lesson')
 
@@ -141,9 +136,8 @@ class PracticeSession(Base):
     learner_id = Column(Integer, ForeignKey('learners.id'), nullable=False)
     lesson_id = Column(Integer, ForeignKey('lessons.id'))
     session_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    score = Column(Integer, default=0)  # e.g., out of 100
-    feedback = Column(String)  # AI-generated later
-    # Relationships
+    score = Column(Integer, default=0)
+    feedback = Column(String)
     learner = relationship('Learner', back_populates='sessions')
     lesson = relationship('Lesson', back_populates='sessions')
 
