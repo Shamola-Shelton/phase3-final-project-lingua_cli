@@ -72,3 +72,14 @@ def simulate_convo(learner, user_input):
         f"Fallback: Sample {learner.target_language} response for {learner.proficiency_level}.",
         "Fallback: Ensure your input matches the target language."
     )
+
+def get_proficiency_levels():
+    """
+    Returns a tuple of tuples containing proficiency levels and their minimum score thresholds.
+    Each inner tuple is (level, min_score).
+    """
+    return (
+        ("Beginner", 0),
+        ("Intermediate", 70),
+        ("Advanced", 90)
+    )
